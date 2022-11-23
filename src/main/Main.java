@@ -1,5 +1,6 @@
 package main;
 
+import jcodelib.diffutil.TreeDiff;
 import jcodelib.parser.TreeBuilder;
 import jcodelib.parser.TreeNode;
 import org.eclipse.jdt.core.dom.ASTNode;
@@ -24,6 +25,15 @@ public class Main {
         File old = Objects.requireNonNull((Paths.get(changesDir.getAbsolutePath(), changeDirName, "old").toFile()).listFiles(path -> path.getName().endsWith(".java")))[0];
 
         return TreeBuilder.buildTreeFromFile(old);
+    }
+
+    private static void getGumTreeResultForFile(int changeNr) throws Exception {
+        String changeDirName = String.format("change%03d", changeNr);
+        File oldFile = Objects.requireNonNull((Paths.get(changesDir.getAbsolutePath(), changeDirName, "old").toFile()).listFiles(path -> path.getName().endsWith(".java")))[0];
+        File newFile = Objects.requireNonNull((Paths.get(changesDir.getAbsolutePath(), changeDirName, "new").toFile()).listFiles(path -> path.getName().endsWith(".java")))[0];
+        System.out.println(TreeDiff.diffGumTreeWithGrouping(oldFile, newFile));
+
+
     }
 }
 
