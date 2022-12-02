@@ -15,6 +15,8 @@ public class TreeNode {
 	public List<TreeNode> children;
 	private int lineNumber;
 
+	public String hash;
+
 	public TreeNode(){
 		this("root", null);
 	}

@@ -1,6 +1,11 @@
 package jcodelib.parser;
 
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Stack;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
@@ -24,18 +29,39 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 
 public class JavaCodeVisitor extends ASTVisitor {
 
+    private final MessageDigest md5;
     private Stack<TreeNode> nodeStack;
 
     public JavaCodeVisitor(TreeNode root) {
-        this.nodeStack = new Stack<TreeNode>();
+        this.nodeStack = new Stack<>();
         this.nodeStack.push(root);
+        try {
+            this.md5 = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public void postVisit(ASTNode node) {
         if (!(node instanceof ExpressionStatement)) {
-            nodeStack.pop();
+            TreeNode treeNode = nodeStack.pop();
+            if (treeNode.isLeaf()) {
+                treeNode.hash = convertToHex(md5.digest(treeNode.getLabel().getBytes()));
+            } else {
+                String joined = treeNode.children.stream().map((Function<TreeNode, Object>) treeNode1 -> treeNode1.getASTNode().toString()).map(Object::toString).collect(Collectors.joining());
+                treeNode.hash = convertToHex(md5.digest(joined.getBytes()));
+            }
         }
+    }
+
+    private String convertToHex(final byte[] messageDigest) {
+        BigInteger bigint = new BigInteger(1, messageDigest);
+        String hexText = bigint.toString(16);
+        while (hexText.length() < 32) {
+            hexText = "0".concat(hexText);
+        }
+        return hexText;
     }
 
     @Override
