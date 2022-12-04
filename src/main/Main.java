@@ -2,14 +2,19 @@ package main;
 
 import com.github.gumtreediff.tree.Pair;
 import jcodelib.diffutil.TreeDiff;
+import jcodelib.parser.JavaCodeVisitor;
 import jcodelib.parser.TreeBuilder;
 import jcodelib.parser.TreeNode;
-import org.eclipse.jdt.core.dom.*;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTVisitor;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Stack;
 
 
 public class Main {
@@ -18,35 +23,20 @@ public class Main {
     public static void main(String[] args) throws Exception {
         File oldFile = Paths.get(changesDir.getAbsolutePath(), "..", "MyFileBefore.java").toFile();
         File newFile = Paths.get(changesDir.getAbsolutePath(), "..", "MyFileAfter.java").toFile();
+
         TreeNode oldRoot = TreeBuilder.buildTreeFromFile(oldFile).children.get(0);
         TreeNode newRoot = TreeBuilder.buildTreeFromFile(newFile).children.get(0);
 
+        TreeNode rootOld = TreeBuilder.buildTreeFromFile(oldFile);
+        TreeNode rootNew = TreeBuilder.buildTreeFromFile(newFile);
 
-       /* System.out.println(oldRoot.hash);
-        System.out.println(newRoot.hash);
-        postOrder(oldRoot);
-        System.out.println("-----------------------");
-        postOrder(newRoot);
-        (new MyComparator(oldRoot, newRoot)).compare();*/
 
-        Queue<TreeNode> queue = new LinkedList<>();
-        queue.add(oldRoot);
-        // breadth first search to make sure no concurrent modification exceptions
-        while (!queue.isEmpty()) {
-            TreeNode currOldNode = queue.poll();
-            if (!currOldNode.isLeaf()) {
-                if (pruneTree(currOldNode, newRoot)) {
-                    currOldNode.getParent().children.removeIf(node -> node.hash.equals(currOldNode.hash));
-                } else {
-                    queue.addAll(currOldNode.children);
-                }
-            }
-        }
+        JavaCodeVisitor javaCodeVisitor = new JavaCodeVisitor(rootOld);
 
-        // oldRoot and newRoot now only have unmatched subtrees (and leaf nodes as those could easily be wrong matches with hash value)
+        javaCodeVisitor.traversePreOrder(rootNew);
 
-        System.out.println("done");
     }
+
 
     private static void postOrder(TreeNode node) {
         for (TreeNode child : node.children) {
@@ -55,32 +45,6 @@ public class Main {
         System.out.println(node.hash);
     }
 
-    private static boolean pruneTree(TreeNode oldNode, TreeNode newRoot) {
-        Queue<TreeNode> queue = new LinkedList<>();
-        queue.add(newRoot);
-
-        // breadth first search
-        while (!queue.isEmpty()) {
-            TreeNode temp = queue.poll();
-            if (oldNode.hash.equals(temp.hash)) {
-                System.out.println("Hash equal!");
-                // TODO: special case if no changes, then root node and it has no parent!!
-                // remove oldNode from parent's children list
-                // oldNode.getParent().children.removeIf(node -> node.hash.equals(oldNode.hash));
-
-                // same for new tree
-                temp.getParent().children.removeIf(node -> node.hash.equals(temp.hash));
-
-                // algorithm done, exit while loop
-                queue.clear();
-                return true;
-            } else {
-                System.out.println("Hashes not equal, need to check children");
-                queue.addAll(temp.children);
-            }
-        }
-        return false;
-    }
 
     private static void gumTreeForMyFile() throws Exception {
         File oldFile = Paths.get(changesDir.getAbsolutePath(), "..", "MyFileBefore.java").toFile();
