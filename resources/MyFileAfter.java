@@ -8,4 +8,6 @@ public class Main {
     private static void myMethod() {
         System.out.println("Hello");
     }
+
+    private void insert()
 }

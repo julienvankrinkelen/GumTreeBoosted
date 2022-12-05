@@ -1,13 +1,12 @@
 package jcodelib.parser;
 
-import java.io.File;
-import java.io.IOException;
-
+import file.FileIOManager;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 
-import file.FileIOManager;
+import java.io.File;
+import java.io.IOException;
 
 public class TreeBuilder {
 

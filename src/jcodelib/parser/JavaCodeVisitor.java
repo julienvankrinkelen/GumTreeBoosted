@@ -30,79 +30,87 @@ public class JavaCodeVisitor extends ASTVisitor {
         }
     }
 
-    public void traversePreOrder(TreeNode node) {
+    public void traversePreOrder(TreeNode newRootNode) {
         // breadth first search to make sure no concurrent modification exceptions
+        // first check if root -> then just auto match with other root
+        // second check if pruneable
+        // check for similarity -> match
+        // else TODO check if Update or Remove
+        // else add as Delete because no match could be found
+        // Lastly, check new Tree for unmatched and add as INSERT
         while (!queue.isEmpty()) {
             currentOldNode = queue.poll();
             if (currentOldNode.isRoot()) {
                 queue.addAll(currentOldNode.children);
-            } else if (!currentOldNode.isLeaf()) {
+            } else if (pruneTree(currentOldNode, newRootNode)) {
+                System.out.println("removed");
 
-                if (pruneTree(currentOldNode, node)) {
-                    System.out.println("removed");
-
-                    currentOldNode.getParent().children.removeIf(childNode -> childNode.hash.equals(currentOldNode.hash));
-                } else {
-                    String nodeType = currentOldNode.getLabel();
-                    int startingPosition = currentOldNode.getASTNode().getStartPosition();
-                    int endPosition = startingPosition + currentOldNode.getASTNode().getLength();
-
-
-                    if (!matchWithSimilarity(node)) {
-                        //TODO add OTHER CD CHANGES
-                        putChangeToResults(new CDChange(CDChange.DELETE, nodeType, startingPosition, endPosition), currentOldNode);
-                    }
-
-
-                    queue.addAll(currentOldNode.children);
+                currentOldNode.getParent().children.removeIf(childNode -> childNode.hash.equals(currentOldNode.hash));
+            } else {
+                if (!matchWithSimilarity(newRootNode)) {
+                    //TODO add OTHER CD CHANGES
+                    //CDChange.MOVE CDChange.Update
+                    putChangeToResults(CDChange.DELETE, currentOldNode);
                 }
+
+                queue.addAll(currentOldNode.children);
             }
         }
+        queue.add(newRootNode);
+        while (!queue.isEmpty()) {
+            TreeNode currentNewNode = queue.poll();
+            System.out.println("Nodes Match " + currentNewNode.isMatched());
+            if (!currentNewNode.isMatched()) {
+                putChangeToResults(CDChange.INSERT, currentNewNode);
+            }
+            queue.addAll(currentNewNode.children);
+        }
+
 
         System.out.println("done");
         System.out.println(results);
     }
 
-    private boolean matchWithSimilarity(TreeNode node) {
+    private boolean matchWithSimilarity(TreeNode newRootNode) {
         Queue<TreeNode> queue = new LinkedList<>();
-        queue.add(node);
+        queue.add(newRootNode);
 
         // breadth first search
         while (!queue.isEmpty()) {
-            TreeNode temp = queue.poll();
+            TreeNode currentNewNode = queue.poll();
 
 
-            if (!temp.isMatched() && checkSimilarity(temp)) {
+            if (!currentNewNode.isMatched() && checkSimilarity(currentNewNode)) {
                 System.out.println("Similar enough!");
 
-                temp.isMatched();
-                currentOldNode.isMatched();
+                currentNewNode.setMatched(true);
+                currentOldNode.setMatched(true);
                 queue.clear();
                 return true;
             } else {
                 System.out.println("Not similar");
-                queue.addAll(temp.children);
+                queue.addAll(currentNewNode.children);
             }
         }
         return false;
     }
 
-    private boolean checkSimilarity(TreeNode node) {
-
+    private boolean checkSimilarity(TreeNode currentNewNode) {
         double similarityCoefficient = 0.0;
-        double allChildren = currentOldNode.children.size() + node.children.size();
+        double allChildren = currentOldNode.children.size() + currentNewNode.children.size();
 
-        List<TreeNode> sameChildren = new ArrayList<>(currentOldNode.children);
-        List<TreeNode> differentChildren = new ArrayList<>(currentOldNode.children);
-        differentChildren.addAll(node.children);
+        //super confusing way to get different Nodes 
+        List<TreeNode> sameChildren = new LinkedList<>(currentOldNode.children);
+        List<TreeNode> differentChildren = new LinkedList<>(currentOldNode.children);
+        differentChildren.addAll(currentNewNode.children);
         sameChildren.retainAll(differentChildren);
         differentChildren.removeAll(sameChildren);
 
-        if (currentOldNode.getLabel().equals(node.getLabel())) similarityCoefficient += 0.25;
-        if (currentOldNode.getParent() == node.getParent()) similarityCoefficient += 0.25;
+        if (currentOldNode.getLabel().equals(currentNewNode.getLabel())) similarityCoefficient += 0.25;
+        if (currentOldNode.getParent().getLabel().equals(currentNewNode.getParent().getLabel())) similarityCoefficient += 0.25;
         similarityCoefficient += (1 - ((double) differentChildren.size() / allChildren)) / 2;
-        System.out.println(similarityCoefficient);
-        return similarityCoefficient > 0.5;
+
+        return similarityCoefficient >= 0.5;
     }
 
     @Override
@@ -162,18 +170,15 @@ public class JavaCodeVisitor extends ASTVisitor {
         queue.add(newRoot);
 
         // breadth first search
+        //TODO remove duplication of breadth first search
         while (!queue.isEmpty()) {
-            TreeNode temp = queue.poll();
-            queue.addAll(temp.children);
+            TreeNode currentNewNode = queue.poll();
+            queue.addAll(currentNewNode.children);
 
-            if (!temp.isMatched() && oldNode.hash.equals(temp.hash)) {
+            if (checkIfNotMatchedAndSameHash(oldNode, currentNewNode)) {
                 System.out.println("Hash equal!");
-                // TODO: special case if no changes, then root node and it has no parent!!
-                // remove oldNode from parent's children list
-                // oldNode.getParent().children.removeIf(node -> node.hash.equals(oldNode.hash));
-
                 // same for new tree
-                temp.getParent().children.removeIf(node -> node.hash.equals(temp.hash));
+                currentNewNode.getParent().children.removeIf(node -> node.hash.equals(currentNewNode.hash));
 
                 // algorithm done, exit while loop
                 queue.clear();
@@ -186,7 +191,17 @@ public class JavaCodeVisitor extends ASTVisitor {
 
     }
 
-    private void putChangeToResults(CDChange change, TreeNode node) {
+    private boolean checkIfNotMatchedAndSameHash(TreeNode oldNode, TreeNode temp) {
+        //checks if node is already matched and checks if node has hash - normally only root does not have hash
+        return !temp.isMatched() && oldNode.hash != null && temp.hash != null && oldNode.hash.equals(temp.hash);
+    }
+
+    private void putChangeToResults(String changeType, TreeNode node) {
+        String nodeType = node.getLabel();
+        int startingPosition = node.getASTNode().getStartPosition();
+        int endPosition = startingPosition + node.getASTNode().getLength();
+        CDChange change = new CDChange(changeType, nodeType, startingPosition, endPosition);
+
         LinkedList<TreeNode> existingList = results.get(change);
         if (existingList != null) {
             existingList.add(node);
