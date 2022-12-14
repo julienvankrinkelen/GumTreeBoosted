@@ -2,6 +2,7 @@ package main;
 
 import com.github.gumtreediff.tree.Pair;
 import jcodelib.diffutil.TreeDiff;
+import jcodelib.element.GTAction;
 import jcodelib.parser.JavaCodeVisitor;
 import jcodelib.parser.TreeBuilder;
 import jcodelib.parser.TreeNode;
@@ -30,46 +31,37 @@ public class Main {
         TreeNode rootOld = TreeBuilder.buildTreeFromFile(oldFile);
         TreeNode rootNew = TreeBuilder.buildTreeFromFile(newFile);
 
+        int changeNr = 68;
+
+        rootOld = getOldTreeForChange(changeNr);
+        rootNew = getNewTreeForChange(changeNr);
+
 
         JavaCodeVisitor javaCodeVisitor = new JavaCodeVisitor(rootOld);
 
         javaCodeVisitor.traversePreOrder(rootNew);
-
+        List<GTAction> actions = getGumTreeResultForChange(changeNr);
+        System.out.println("done");
     }
 
-
-    private static void postOrder(TreeNode node) {
-        for (TreeNode child : node.children) {
-            postOrder(child);
-        }
-        System.out.println(node.hash);
-    }
-
-
-    private static void gumTreeForMyFile() throws Exception {
-        File oldFile = Paths.get(changesDir.getAbsolutePath(), "..", "MyFileBefore.java").toFile();
-        File newFile = Paths.get(changesDir.getAbsolutePath(), "..", "MyFileAfter.java").toFile();
-        System.out.println(TreeDiff.diffGumTreeWithGrouping(oldFile, newFile));
-    }
-
-    private static TreeNode getTreeForChange(int changeNr) throws IOException {
+    private static TreeNode getOldTreeForChange(int changeNr) throws IOException {
         String changeDirName = String.format("change%03d", changeNr);
         File old = Objects.requireNonNull((Paths.get(changesDir.getAbsolutePath(), changeDirName, "old").toFile()).listFiles(path -> path.getName().endsWith(".java")))[0];
 
         return TreeBuilder.buildTreeFromFile(old);
     }
+    private static TreeNode getNewTreeForChange(int changeNr) throws IOException {
+        String changeDirName = String.format("change%03d", changeNr);
+        File old = Objects.requireNonNull((Paths.get(changesDir.getAbsolutePath(), changeDirName, "new").toFile()).listFiles(path -> path.getName().endsWith(".java")))[0];
 
-    private static void getGumTreeResultForFile(int changeNr) throws Exception {
+        return TreeBuilder.buildTreeFromFile(old);
+    }
+
+    private static List<GTAction> getGumTreeResultForChange(int changeNr) throws Exception {
         String changeDirName = String.format("change%03d", changeNr);
         File oldFile = Objects.requireNonNull((Paths.get(changesDir.getAbsolutePath(), changeDirName, "old").toFile()).listFiles(path -> path.getName().endsWith(".java")))[0];
         File newFile = Objects.requireNonNull((Paths.get(changesDir.getAbsolutePath(), changeDirName, "new").toFile()).listFiles(path -> path.getName().endsWith(".java")))[0];
-        System.out.println(TreeDiff.diffGumTreeWithGrouping(oldFile, newFile));
-    }
-
-    private static void gumTreeForOtherFile() throws Exception {
-        File oldFile = Paths.get(changesDir.getAbsolutePath(), "..", "DiffTestBefore.java").toFile();
-        File newFile = Paths.get(changesDir.getAbsolutePath(), "..", "DiffTestAfter.java").toFile();
-        System.out.println(TreeDiff.diffGumTreeWithGrouping(oldFile, newFile));
+        return TreeDiff.diffGumTreeWithGrouping(oldFile, newFile);
     }
 }
 
