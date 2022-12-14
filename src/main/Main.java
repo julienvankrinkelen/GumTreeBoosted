@@ -41,6 +41,8 @@ public class Main {
 
         javaCodeVisitor.traversePreOrder(rootNew);
         List<GTAction> actions = getGumTreeResultForChange(changeNr);
+        System.out.println("--------- GUMTREE RESULTS BELOW ---------");
+        System.out.println(actions);
         System.out.println("done");
     }
 
