@@ -7,6 +7,7 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -68,7 +69,8 @@ public class JavaCodeVisitor extends ASTVisitor {
 
 
         System.out.println("done");
-        System.out.println(results);
+        results.forEach((cdChange, treeNodes) -> System.out.println(cdChange));
+        //System.out.println(results);
     }
 
     private boolean matchWithSimilarity(TreeNode newRootNode) {
