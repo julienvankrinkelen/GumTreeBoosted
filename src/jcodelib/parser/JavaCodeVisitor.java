@@ -69,6 +69,21 @@ public class JavaCodeVisitor extends ASTVisitor {
 
 
         System.out.println("done");
+
+        // find any DEL import statements and add the parent as DEL changes as well
+        HashMap<CDChange, LinkedList<TreeNode>> additionalImportDels = new HashMap<>();
+
+        results.forEach((cdChange, treeNodes) -> {
+            if (cdChange.getChangeType().equals("DEL")) {
+                TreeNode parent = treeNodes.get(0).getParent();
+                if (parent.getLabel().equals("ImportDeclaration")) {
+                    CDChange importStatment = new CDChange("DEL", parent.getLabel(), parent.getStartPosition(), parent.getEndPosition());
+                    additionalImportDels.put(importStatment, null);
+                }
+
+            }
+        });
+        results.putAll(additionalImportDels);
         results.forEach((cdChange, treeNodes) -> System.out.println(cdChange));
         //System.out.println(results);
     }
@@ -109,7 +124,8 @@ public class JavaCodeVisitor extends ASTVisitor {
         differentChildren.removeAll(sameChildren);
 
         if (currentOldNode.getLabel().equals(currentNewNode.getLabel())) similarityCoefficient += 0.25;
-        if (currentOldNode.getParent().getLabel().equals(currentNewNode.getParent().getLabel())) similarityCoefficient += 0.25;
+        if (currentOldNode.getParent().getLabel().equals(currentNewNode.getParent().getLabel()))
+            similarityCoefficient += 0.25;
         similarityCoefficient += (1 - ((double) differentChildren.size() / allChildren)) / 2;
 
         return similarityCoefficient >= 0.5;
